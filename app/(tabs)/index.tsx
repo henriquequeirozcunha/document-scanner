@@ -1,70 +1,129 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import {
+  GestureResponderEvent,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Image,
+} from "react-native";
+import Permissions from "react-native-permissions";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import DocumentScanner from "@ertan95/react-native-document-scanner";
+import { useEffect, useRef, useState } from "react";
 
 export default function HomeScreen() {
+  const pdfScannerElement = useRef<DocumentScanner>(null);
+  const [allowed, setAllowed] = useState(false);
+  const [picture, setPicture] = useState<any>(null);
+
+  function handleOnPictureTaken(event: any) {
+    console.log("test handleOnPictureTaken", event);
+    setPicture(event);
+  }
+
+  function onRectangleDetect(event: any) {
+    console.log("test onRectangleDetect", event);
+  }
+
+  function onProcessing(event: any) {
+    console.log("test onProcessing", event, pdfScannerElement.current);
+  }
+
+  function handleOnPress(event: GestureResponderEvent) {
+    console.log("test handleOnPress");
+    pdfScannerElement.current && pdfScannerElement.current.capture();
+  }
+
+  useEffect(() => {
+    async function requestCamera() {
+      const result = await Permissions.request(
+        Platform.OS === "android"
+          ? "android.permission.CAMERA"
+          : "ios.permission.CAMERA"
+      );
+      if (result === "granted") setAllowed(true);
+    }
+    requestCamera();
+  }, []);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View
+      style={{
+        borderWidth: 2,
+        borderStyle: "solid",
+        flex: 1,
+      }}
+    >
+      <View style={{ paddingTop: 50, flexDirection: "row", columnGap: 10 }}>
+        <TouchableOpacity
+          style={{ height: 50, backgroundColor: "green" }}
+          onPress={handleOnPress}
+        >
+          <Text>TAKE PICTURE</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ height: 50, backgroundColor: "green" }}
+          onPress={() => setPicture(null)}
+        >
+          <Text>CLEAR PICTURE</Text>
+        </TouchableOpacity>
+      </View>
+      <View
+        style={{
+          borderColor: "red",
+          borderWidth: 2,
+          borderStyle: "solid",
+          flex: 1,
+        }}
+      >
+        {picture ? (
+          <Image
+            source={{ uri: picture.croppedImage }}
+            style={styles.preview}
+          />
+        ) : (
+          <DocumentScanner
+            ref={pdfScannerElement}
+            style={styles.scanner}
+            onPictureTaken={handleOnPictureTaken}
+            onRectangleDetect={onRectangleDetect}
+            onProcessing={onProcessing}
+            documentAnimation={true}
+            overlayColor="rgba(255,130,0, 0.9)"
+            enableTorch={false}
+            quality={1}
+            saturation={0}
+            detectionCountBeforeCapture={5}
+            detectionRefreshRateInMS={50}
+            onDeviceSetup={(event) => {
+              // set camera resolution width, height in styles.scanner on start up to avoid scanner disortion
+              console.log("onDeviceSetup:", event.height, event.width);
+            }}
+          />
+        )}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  scanner: {
+    flex: 1,
+  },
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   stepContainer: {
     gap: 8,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  preview: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
   },
 });
